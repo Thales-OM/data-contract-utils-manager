@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -16,9 +19,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"net/url"
-	"path"
-	"regexp"
 )
 
 const (
@@ -126,13 +126,21 @@ func saveTokenToEnv(token string) error {
 	return nil
 }
 
-func getEnvFilePath() (string, error) {
-	// .env is alongside executable
+func getWorkingDirPath() (string, error) {
+	// All is alongside executable
 	execPath, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
 	execDir := filepath.Dir(execPath)
+	return execDir, nil
+}
+
+func getEnvFilePath() (string, error) {
+	execDir, err := getWorkingDirPath()
+	if err != nil {
+		return "", err
+	}
 	return filepath.Join(execDir, envFileName), nil
 }
 
@@ -210,11 +218,16 @@ func switchCmd() *cobra.Command {
 				return err
 			}
 
-			// Ensure directories exist
-			if err := ensureDir(cacheDirName); err != nil {
+			workingDir, err := getWorkingDirPath()
+			if err != nil {
 				return err
 			}
-			if err := ensureDir(currentDirName); err != nil {
+
+			// Ensure directories exist
+			if err := ensureDir(filepath.Join(workingDir, cacheDirName)); err != nil {
+				return err
+			}
+			if err := ensureDir(filepath.Join(workingDir, currentDirName)); err != nil {
 				return err
 			}
 
@@ -341,7 +354,12 @@ func ensureDir(dir string) error {
 }
 
 func loadMeta() (*Meta, error) {
-	metaPath := filepath.Join(cacheDirName, metaFileName)
+	workingDir, err := getWorkingDirPath()
+	if err != nil {
+		return nil, nil
+	}
+
+	metaPath := filepath.Join(workingDir, cacheDirName, metaFileName)
 	meta := &Meta{Versions: map[string]string{}}
 
 	if _, err := os.Stat(metaPath); os.IsNotExist(err) {
@@ -365,7 +383,8 @@ func loadMeta() (*Meta, error) {
 }
 
 func saveMeta(meta *Meta) error {
-	metaPath := filepath.Join(cacheDirName, metaFileName)
+	workingDir, err := getWorkingDirPath()
+	metaPath := filepath.Join(workingDir, cacheDirName, metaFileName)
 	data, err := yaml.Marshal(meta)
 	if err != nil {
 		return fmt.Errorf("failed to marshal meta data: %w", err)
@@ -475,7 +494,8 @@ func downloadToCache(downloadURL string, name string, token string) (string, err
 		return "", fmt.Errorf("failed to download file: status %d", resp.StatusCode)
 	}
 
-	cachedFilePath := filepath.Join(cacheDirName, name)
+	workingDir, err := getWorkingDirPath()
+	cachedFilePath := filepath.Join(workingDir, cacheDirName, name)
 
 	outFile, err := os.Create(cachedFilePath)
 	if err != nil {
@@ -500,13 +520,17 @@ func downloadToCache(downloadURL string, name string, token string) (string, err
 }
 
 func switchToCachedVersion(version, cachedExeName string) error {
-	if err := cleanDir(currentDirName); err != nil {
+	workingDir, err := getWorkingDirPath()
+	if err != nil {
+		return err
+	}
+	if err := cleanDir(filepath.Join(workingDir, currentDirName)); err != nil {
 		return err
 	}
 
-	srcPath := filepath.Join(cacheDirName, cachedExeName)
+	srcPath := filepath.Join(workingDir, cacheDirName, cachedExeName)
 	simplifiedName := simplifiedExecutableName(cachedExeName)
-	dstPath := filepath.Join(currentDirName, simplifiedName)
+	dstPath := filepath.Join(workingDir, currentDirName, simplifiedName)
 
 	if err := copyFile(srcPath, dstPath); err != nil {
 		return fmt.Errorf("failed to copy executable to current: %w", err)
