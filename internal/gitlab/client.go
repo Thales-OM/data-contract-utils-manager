@@ -86,7 +86,7 @@ func (c *Client) Releases(ctx context.Context) ([]Release, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 
 	var releases []Release
 	if err := json.NewDecoder(body).Decode(&releases); err != nil {
@@ -104,7 +104,7 @@ func (c *Client) Download(ctx context.Context, assetURL string, dst io.Writer) e
 	if err != nil {
 		return err
 	}
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 
 	if _, err := io.Copy(dst, body); err != nil {
 		return fmt.Errorf("download asset: %w", err)
@@ -131,7 +131,7 @@ func (c *Client) get(ctx context.Context, endpoint string) (io.ReadCloser, error
 		return nil, fmt.Errorf("GET %s: %w", endpoint, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, errorSnippetMax))
 		return nil, fmt.Errorf("GET %s: unexpected status %d, body: %s",
 			endpoint, resp.StatusCode, strings.TrimSpace(string(snippet)))

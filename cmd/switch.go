@@ -102,10 +102,13 @@ func runSwitch(cmd *cobra.Command, opts *options, version, assetName string, for
 	if err != nil {
 		return err
 	}
-	defer sink.Close()
 
 	if err := a.client.Download(ctx, downloadURL, sink); err != nil {
+		_ = sink.Close()
 		return err
+	}
+	if err := sink.Close(); err != nil {
+		return fmt.Errorf("finalize %s: %w", link.Name, err)
 	}
 
 	meta.Versions[version] = link.Name

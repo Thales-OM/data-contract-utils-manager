@@ -156,13 +156,17 @@ func TestOpenCacheFileTruncatesExisting(t *testing.T) {
 	if _, err := f.Write([]byte(strings.Repeat("a", 100))); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	f, err = s.OpenCacheFile(name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	info, err := os.Stat(filepath.Join(s.CacheDir(), name))
 	if err != nil {

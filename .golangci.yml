@@ -1,0 +1,29 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - copyloopvar
+    - misspell
+    - unconvert
+    - unparam
+    - wastedassign
+  settings:
+    errcheck:
+      # CLI output helpers: a failing write to stdout/stderr has no sensible
+      # recovery path here.
+      exclude-functions:
+        - fmt.Print
+        - fmt.Printf
+        - fmt.Println
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

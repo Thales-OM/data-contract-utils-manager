@@ -1,24 +1,39 @@
-# Makefile for Go application
+# Makefile for data-contract-utils-manager.
+#
+# Recipes only use `go` plus POSIX-safe constructs so they work with GNU make
+# on Linux, macOS and Windows (Git Bash / MSYS). Without make, every target is
+# a plain `go ...` command you can run directly — see README.md.
 
-# Variables
-BINARY_NAME = data-contract-utils-manager.exe
-BUILD_DIR = ./build
-DEPLOY_DIR = ../data-contract-utils
+MODULE   := github.com/Thales-OM/data-contract-utils-manager/cmd
+VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS  := -s -w -X $(MODULE).version=$(VERSION)
 
-# Default target
-all: build
+.PHONY: help build test cover vet lint fmt tidy clean
 
-# Build the Go application
-build: force
-	go build -o $(BUILD_DIR)/$(BINARY_NAME) main.go
+help: ## Show available targets
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
-# Force the build to always run
-force:
+build: ## Build the binary into bin/
+	go build -trimpath -ldflags "$(LDFLAGS)" -o bin/
 
-# Deploy the application
-deploy: clean
-	cp $(BUILD_DIR)/$(BINARY_NAME) $(DEPLOY_DIR)
+test: ## Run the test suite
+	go test -race ./...
 
-# Clean the deploy directory
-clean:
-	rm -rf $(DEPLOY_DIR)/* $(DEPLOY_DIR)/.*
+cover: ## Run tests and report coverage
+	go test -race -covermode=atomic -coverprofile=coverage.txt ./...
+	go tool cover -func=coverage.txt
+
+vet: ## Run go vet
+	go vet ./...
+
+lint: ## Run golangci-lint (install: https://golangci-lint.run)
+	golangci-lint run
+
+fmt: ## Format all Go sources
+	gofmt -s -w .
+
+tidy: ## Sync module dependencies
+	go mod tidy
+
+clean: ## Remove build outputs
+	$(RM) -r bin coverage.txt
