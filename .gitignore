@@ -1,0 +1,19 @@
+# Build artifacts
+/bin/
+/dist/
+/build/
+*.exe
+
+# Runtime state (created next to the built binary)
+/cache/
+/current/
+.env
+
+# Test / coverage output
+*.test
+*.out
+coverage.txt
+
+# Editors / IDEs
+.idea/
+.vscode/
